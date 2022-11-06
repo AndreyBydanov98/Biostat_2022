@@ -1,0 +1,309 @@
+---
+title: "Data_Visualisation_HW1"
+output: 
+  html_document:
+    code_folding: show
+    df_print: paged
+    highlight: pygments
+    smooth_scroll: no
+    theme: united
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    toc_position: right
+date: "2022-11-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+insurance <- read.csv('insurance_cost.csv')
+# install.packages("plotly")
+# или 
+# devtools::install_github("ropensci/plotly")
+library(plotly)
+
+skimr::skim(insurance)
+
+str(insurance)
+```
+
+```{r}
+summary(insurance)
+```
+
+## 2
+
+You can also embed plots, for example:
+
+```{r}
+# age histogram 
+
+ggplot(data = insurance, 
+       aes(x = age)) +
+  geom_histogram()
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+# bmi histogram
+plot_ly(
+  insurance[insurance$bmi != 0,],
+  x = ~ bmi,
+  type = 'histogram',
+  color = 'yellow'
+)
+
+
+```
+
+```{r}
+# children histogram 
+plot_ly(
+  insurance,
+  x = ~ children,
+  type = 'histogram',
+  color = 'pink'
+)
+
+
+```
+
+```{r}
+# charges histogram 
+plot_ly(
+  insurance[insurance$charges != 0,],
+  x = ~ charges,
+  type = 'histogram',
+  color = 'brown'
+)
+```
+
+## 3
+
+```{r}
+
+charge_mean <- round(mean(insurance$charges),1)
+charge_median <- round(median(insurance$charges),1)
+
+den <- ggplot(data = insurance, 
+       aes(x = charges)) +
+  geom_density(color="darkblue", fill="lightblue") +
+  xlab("Charges") +
+  ylab("Density") +
+  geom_vline(aes(xintercept = charge_mean, color = 'blue')) +
+  annotate("text", 
+           x= charge_mean+10000, 
+           y=0.00001, 
+           label=paste0("Mean=", charge_mean)) + 
+  geom_vline(aes(xintercept = charge_median, color = 'red')) +
+  annotate("text", 
+           x= charge_median+500, 
+           y=0.00001, 
+           label=paste0("Median=", charge_median)) + 
+  theme_bw() + theme(legend.position="none")
+
+```
+
+## 4
+
+```{r}
+#charges and sex
+box1 <- ggplot() +
+  geom_boxplot(data = insurance, 
+               aes(x = sex, y = charges)) +
+  theme_dark()
+```
+
+```{r}
+box2 <- ggplot() +
+  geom_boxplot(data = insurance, 
+               aes(x = smoker, y = charges)) +
+  theme_get()
+```
+
+```{r}
+box3 <- ggplot() +
+  geom_boxplot(data = insurance, 
+               aes(x = region, y = charges)) +
+  theme_grey()
+```
+
+## 5
+
+```{r}
+library(ggpubr)
+
+combine_plot <- ggarrange(den, ggarrange(box1, box2, box3, ncol = 3, labels = c("B", "C", "D")), nrow = 2, labels = "A") # Указываем формат расположения графиков в виде таблицы, где будет 2 ячейки (для графиков) по колонкам и 1 по строке
+combine_plot + 
+  theme_void() + 
+  ggtitle('Characterisation of Charges value')
+
+```
+
+## 6
+
+```{r}
+charge_mean <- round(mean(insurance$charges),1)
+charge_median <- round(median(insurance$charges),1)
+
+den <- ggplot(data = insurance, 
+       aes(x = charges, group = region)) +
+  geom_density(color="darkblue", fill="lightblue") +
+  xlab("Charges") +
+  ylab("Density") +
+  geom_vline(aes(xintercept = charge_mean, color = 'blue')) +
+  annotate("text", 
+           x= charge_mean+10000, 
+           y=0.00001, 
+           label=paste0("Mean=", charge_mean)) + 
+  geom_vline(aes(xintercept = charge_median, color = 'red')) +
+  annotate("text", 
+           x= charge_median+500, 
+           y=0.00001, 
+           label=paste0("Median=", charge_median)) + 
+  facet_grid(. ~ region) + 
+  theme_bw() + theme(legend.position="none")
+den
+```
+
+## 7
+
+```{r}
+insurance %>% 
+  ggplot(aes(x=age, y=charges)) + 
+    geom_point(size=3) +
+  theme(axis.text.x = element_text(size = 14)) + 
+   xlab("age") +
+  ylab("charges") +
+  ggtitle('How charges changing with age') + theme_classic()
+```
+
+## 8 + 9
+
+```{r}
+insurance %>% 
+  ggplot(aes(x=age, y=charges, color = smoker, fill = smoker, group = smoker)) + 
+    geom_point(size=3) + 
+  theme(axis.text.x = element_text(size = 14)) +
+  geom_smooth(method=lm, 
+              color="red", fullrange = T,
+              fill="#69b3a2", 
+              se=TRUE 
+              ) +
+   xlab("age") +
+  ylab("charges") +
+  ggtitle('How charges changing with age') + theme_bw()
+
+```
+
+## 10
+
+```{r}
+insurance %>% 
+  ggplot(aes(x=bmi, y=charges, color = smoker, fill = smoker, group = smoker)) + 
+    geom_point(size=2) + 
+  theme(axis.text.x = element_text(size = 14)) +
+  geom_smooth(method=lm, 
+              color="red", fullrange = T,
+              fill="#69b3a2", 
+              se=TRUE 
+              ) +
+   xlab("bmi") +
+  ylab("charges") +
+  ggtitle('How charges changing with body mass index') + theme_bw()
+```
+
+## 11
+
+А влияет ли курение на индекс массы тела в наших данных?
+
+```{r}
+insurance %>% 
+  ggplot(aes(x=smoker, y=bmi))+ #color = smoker, fill = smoker, group = smoker)) + 
+    geom_boxplot() + 
+  theme(axis.text.x = element_text(size = 14)) +
+  ggtitle('Is there a relationship between bmi and smoking?') + 
+  theme_bw()
+```
+
+Как видно из графика статистически значимой разницы по индексу массы тела в группах курящих и не курящих не обнаружено. Посмотрим, есть ли разница у разных полов.
+
+```{r}
+insurance %>% 
+  ggplot(aes(x=smoker, y=bmi, fill = sex))+ #color = smoker, fill = smoker, group = smoker)) + 
+    geom_boxplot() + 
+  theme(axis.text.x = element_text(size = 14)) +
+  ggtitle('Is there a relationship between bmi and smoking related to sex?') + 
+  theme_bw()
+```
+
+Значимых различий так же не обнаружено.
+
+## 12
+
+В 10-м задании мы увидели сильную зависимость charges от курения и bmi - наблюдается сильная корреляция у курящих с bmi и затратами страховой. Хотелось бы узнать, какие показатели здоровья меняются с возрастом у групп курящих и некурящих.
+
+```{r}
+insurance %>% 
+  ggplot(aes(x=age, y=bmi, color = smoker, fill = smoker, group = smoker)) + 
+    geom_point(size=2) + 
+  theme(axis.text.x = element_text(size = 14)) +
+  geom_smooth(method=lm, 
+              color="red", fullrange = T,
+              fill="#69b3a2", 
+              se=TRUE 
+              ) +
+   xlab("age") +
+  ylab("bmi") +
+  ggtitle('How bmi changing with age and smoking') + theme_bw()
+```
+
+Никаких различий не обнаружено в группах курящих и некурящих. Попробуем поискать в регионах.
+
+```{r}
+insurance %>% 
+  ggplot(aes(x=bmi, y=age, color = region, fill = region, group = region)) + 
+    geom_boxplot() + 
+  theme(axis.text.x = element_text(size = 14)) +
+  geom_smooth(method=lm, 
+              color="red", fullrange = T,
+              fill="#69b3a2", 
+              se=TRUE 
+              ) +
+   xlab("age") +
+  ylab("bmi") +
+  ggtitle('How bmi changing with age and region') + theme_bw()
+```
+
+Cнова не видим различий в регионах. Может быть они есть затратах на человека, в зависимости от индекса массы тела и региона?
+
+```{r}
+insurance %>% 
+  ggplot(aes(x=bmi, y = charges, color = region, fill = region, group = region)) + 
+    geom_boxplot() + 
+  theme(axis.text.x = element_text(size = 14)) +
+  geom_smooth(method=lm, 
+              color="red", fullrange = T,
+              fill="#69b3a2", 
+              se=TRUE 
+              ) +
+   xlab("bmi") +
+  ylab("charges") +
+  ggtitle('How bmi changing with age and region') + theme_bw()
+```
+
+Кажется, что да - продвигаясь с северо-запада на юго-восток видим постепенное увеличение затрат с ростом индекса массы тела. Значит, регион проживания влияет на увеличение затрат, но не зависит от абсолютного показателя индекса массы тела.
+
+```{r}
+
+```
