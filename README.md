@@ -1,2 +1,2 @@
 # Biostat_2022
-my first file
+This is a Data Visualisation educational module from Bioinformatics Institute (2022). 
