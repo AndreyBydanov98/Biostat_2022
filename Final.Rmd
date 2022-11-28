@@ -1,0 +1,54 @@
+---
+title: "Stat_report"
+author: "Andrey"
+date: "2022-11-16"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tibble)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+#install.packages("flextable")
+library(flextable)
+```
+
+## Summary statistic report 
+
+```{r}
+report <- as_tibble(read.csv("data_excel - data.csv", dec = ",", stringsAsFactors = T))
+report
+```
+
+## Statistics list
+```{r}
+statistics <- list(
+      `_Количество субъектов` = ~length(.x) %>% as.character(),
+      `_Количество (есть данные)` = ~sum(!is.na(.x)) %>% as.character(),
+      `_Нет данных` = ~sum(is.na(.x)) %>% as.character(),
+      `_Ср. знач.` = ~ifelse(sum(!is.na(.x)) == 0, "Н/П*", mean(.x, na.rm = TRUE) %>% round(2) %>% as.character()),
+      `_Станд. отклон.` = ~ifelse(sum(!is.na(.x)) < 3, "Н/П*", sd(.x, na.rm = TRUE) %>% round(2) %>% as.character()),
+      `_95% ДИ для среднего` = ~sd(.x, na.rm = TRUE) %>% round(2) %>% as.character(),
+      `_мин. - макс.` = ~ifelse(sum(!is.na(.x)) == 0, "Н/П*", paste0(min(.x, na.rm = TRUE) %>% round(2), " - ", max(.x, na.rm = TRUE) %>% round(2))),
+      `_Медиана` = ~ifelse(sum(!is.na(.x)) == 0, "Н/П*", median(.x, na.rm = TRUE) %>% round(2) %>% as.character()),
+      `_Q1 - Q3` = ~ifelse(sum(!is.na(.x)) == 0, "Н/П*", paste0(quantile(.x, 0.25, na.rm = TRUE) %>% round(2), " - ", quantile(.x, 0.75, na.rm = TRUE) %>% round(2)))
+)
+```
+
+```{r}
+report %>% 
+  select(`Группа`, `Пол`, `Группа.крови`, where(is.numeric)) %>% 
+  group_by(`Группа`) %>%
+  summarise(across(where(is.numeric), statistics)) %>%
+  pivot_longer(!`Группа`) %>%
+  separate(name, into = c("Переменная", "Статистика"), sep = "__") %>%
+  rename("Значение" = value) %>%
+  flextable() %>% 
+  theme_box() %>%
+  merge_v(c("Группа", "Переменная")) %>%
+  align(align = "center", part = "all") %>% 
+  width(width = 2)
+```
+
