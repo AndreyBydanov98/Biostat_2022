@@ -1,0 +1,117 @@
+---
+title: "Multifactoral analysis"
+author: "Andrey Bydanov"
+date: "2023-01-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(mvtnorm)
+#install.packages('glmnet')
+library(glmnet)
+library(tidyverse)
+
+```
+
+# 1 
+## 1.1
+
+Making a sample S with k and m values:
+
+```{r cars}
+p <- as.data.frame(rmvnorm(n=100, mean = c(88.5, 5.4), sigma = matrix(c(13.25, 2.63, 2.63, 1.45), ncol = 2)))
+
+cov2cor(matrix(c(13.25, 2.629924, 2.629924, 1.45), ncol = 2))
+
+```
+
+```{r}
+k <- p$V1
+m <- p$V2
+summary(lm(k ~ m))
+```
+Полученные оценки связаны с выборочными характеристиками  - разница в средних 
+двух величин отражается на коэффециенте b (Intercept), большое значение дисперсии
+зависимой величины, а также и коэффециента корреляции повышает коэффециент а.   
+
+## 1.2
+Построим график линейной модели и оценим нормальность распределения остатков 
+
+```{r pressure, echo=FALSE}
+plot(lm(p$V1 ~ p$V2))
+res <- residuals(lm(p$V1 ~ p$V2))
+
+shapiro.test(res)
+```
+Полученное значение p-value говорит о том, что остатки нашей модели распределены нормально. 
+
+## 1.3 
+Добавим признак W с нормальным распределением в нашу модель
+```{r}
+w <- rnorm(n = 100)
+summary(lm(p$V1 ~ p$V2 + w))
+```
+Как мы видим, коэффициент детерминации в новой модели получился больше, чем в предыдущей, 
+что согласуется с теорией. Однако, модифицированный коэффициент детерминации 
+получился меньше, чем изначальный, то есть модель стала чуть хуже. 
+
+
+# 2
+
+Построим модель с заданными характеристиками:
+```{r}
+n <-  50 # sample size
+
+# 5 dependent variables
+v1 <- rnorm(n, mean = 0.4, sd = 1)
+v2 <- v1*(11 + rnorm(n, sd = 2))
+v3 <- v1 - v2  + rnorm(n, sd=0.002)
+v4 <- -v2 + v3*(1 - runif(n, min = 0, max = 4))
+v5 <- v4 - v2 + v1 + runif(n, min = 0, max = 1)
+
+y = v1 + 0.5*v2 + 2*v3 - v4 - 0.1*v5 + rnorm(n, sd = 1)
+summary(lm(y~v1+v2+v3+v4+v5))
+```
+Построим для модели lasso-оценку:
+
+```{r}
+# make a matrix with 5 vars
+x <- matrix(c(v1, v2, v3, v4, v5), ncol = 5)
+la.eq <- glmnet(x, y, family = "gaussian", intercept = F, alpha = 1, lambda = 0.2)
+
+matplot(log(la.eq$lambda), t(la.eq$beta), type = 'l', main='Lasso', lwd=2)
+predict(la.eq, x, type = "coefficients")
+```
+
+В итоге коэффициенты модели сильно поменялись, а где то не определяются вовсе.
+Сильно коррелирующие переменные, связанные регрессионной моделью - возраст, метилирование определенных участков
+в локусах, экспрессия генов.
+
+# 3 
+
+```{r}
+n <- 201
+S <- data.frame(Neu <- rnorm(n, mean = 80, sd = 5) %>% round(0), Ly <- rnorm(n, mean = 20, sd = 5) %>% round(0))
+colnames(S) <- c("Neu", "Ly")
+S <- S %>% mutate(`Sepsis` = case_when(`Neu`/`Ly` < 3 ~ 0, 
+                                `Neu`/`Ly` > 9 ~ 1,
+                                `Neu`/`Ly` >= 3 && `Neu`/`Ly` <= 9 ~ (`Neu`/`Ly`-3)/6)) %>% round(2)
+# build a model 
+model <- glm(Sepsis ~ Neu + Ly, S, family = gaussian)
+summary(model)
+```
+
+Находим вероятность сепсиса при данных условиях
+```{r}
+# make a prediction on a certain conditions 
+v = data.frame(Neu = 90, Ly = 15)
+predict(object = model, v)
+```
+
+
+
+
+
+
