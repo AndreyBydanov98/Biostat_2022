@@ -1,0 +1,79 @@
+---
+title: "MC_HW2"
+author: "Andrey Bydanov"
+date: "2023-01-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(multcomp)
+library(dplyr)
+
+```
+
+## 1
+
+Let's prepare our data like we have done earlier. 
+```{r}
+soccer_general <- read.csv("soccer.csv", sep=";")[, 2:6] %>% 
+    mutate(Position = as.factor(Position), 
+    Nationality = as.factor(Nationality), 
+    Age = as.numeric(Age), 
+    Height = as.numeric(Height)
+) %>% 
+filter(Nationality %in% c("Spanish", "Italian", "German", "English", "Argentinian")) 
+set.seed(1) 
+soccer_wrk <- soccer_general[sample(1:nrow(soccer_general), 150), ] %>% 
+    mutate(Nationality = factor(Nationality))
+```
+
+
+
+```{r}
+oneway.test(Height ~ Position, data = soccer_wrk)
+```
+As we see, p-value < 0.05 - it means we can reject H0 implying there is no any dependencies between heigh and player position. 
+
+## 2 
+Perform HBW test 
+```{r}
+m0 <- lm(Height ~ Position, data = soccer_wrk)
+HBW.comp <- m0 %>%  glht(linfct = mcp(Position = "Tukey"))
+HBW.comp %>% summary()
+HBW.comp %>% confint()
+HBW.comp %>% plot(xlab  = "Height difference (cm)")
+```
+Here we see that true difference have several groups - F and D, M and F - the first pair have not been recognised in previous tests with CIs.But according to p-values, M-F and F-D pairs have no significant difference in their estimates and we have no difference in heigh between this groups. 
+
+## 3 
+Previously we reported that M-F group have no significant difference in their group means but here we show that this statement also have no statistically significance according to p-value estimation.  
+
+## 4 
+Let's have a look on boxplot showing heigh distribution between players from different countries -  
+```{r}
+soccer_wrk %>%
+  with(
+    boxplot(Height ~ Nationality, col = "cadetblue3", pch = 20,
+            ylab = "Height (cm)")
+  )
+```
+We can see that groups means almost identical. 
+
+Now we can perform regression analysis.
+
+```{r}
+oneway.test(Height ~ Nationality, data = soccer_wrk)
+
+```
+As the result, we can not reject H0 - so there is no connection between heigh and nationality. 
+
+Well, maybe HBW test can tell us more about it:
+```{r}
+m0 <- lm(Height ~ Nationality, data = soccer_wrk)
+HBW.comp <- m0 %>%  glht(linfct = mcp(Nationality = "Tukey"))
+HBW.comp %>% summary()
+HBW.comp %>% confint()
+HBW.comp %>% plot(xlab  = "Height difference (cm)")
+```
+Unfortunately, the results have confirmed and there is no significant dependence between heigh and nationality of players. 

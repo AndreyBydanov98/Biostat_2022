@@ -1,0 +1,131 @@
+---
+title: "MC"
+author: "Andrey Bydanov"
+date: "2023-01-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+#install.packages("Hmisc")
+library(Hmisc)
+
+```
+
+## 
+Well, we have our data here. Let's have a look on it.  
+```{r}
+# data preparing 
+soccer_general <- read.csv("soccer.csv", sep=";")[, 2:6] %>%
+  mutate(Position = as.factor(Position),
+         Nationality = as.factor(Nationality),
+         Age = as.numeric(Age),
+         Height = as.numeric(Height)) %>%
+  filter(Nationality %in% c("Spanish", "Italian", "German", "English", "Argentinian"))
+
+set.seed(1)
+
+soccer_wrk <- soccer_general[sample(1:nrow(soccer_general), 150), ] %>%
+  mutate(Nationality = factor(Nationality))
+soccer_wrk
+```
+
+Build a plot:
+
+```{r}
+# using boxplot for heigh distribution visualizing within footbal groups 
+pd <- position_dodge(0.1)
+
+ggplot(data = soccer_general, 
+       aes(x = soccer_general$Position, y = soccer_general$Height)) +
+  geom_boxplot() + 
+  stat_summary(fun.data="mean_cl_normal", geom="line", colour="blue")+
+  stat_summary(fun.data="mean_cl_normal", conf.int=0.95, geom="errorbar", 
+               width=0.1, linetype=2, colour="blue")+
+  stat_summary(fun.data="mean_cl_normal", geom="point", size=3, 
+               shape=1, colour="blue")+
+  labs(title="Heigh and Position")
+
+summary(soccer_general$Position)
+```
+
+```{r}
+# forming samples with position groups
+forward <- soccer_general %>% filter(Position == "Forward") %>% pull(Age) %>% na.omit()
+defender <- soccer_general %>% filter(Position == "Defender") %>% pull(Age) %>% na.omit()
+goalkeeper <- soccer_general %>% filter(Position == "Goalkeeper") %>%pull(Age) %>% na.omit()
+middle <- soccer_general %>% filter(Position == "Midfielder") %>% pull(Age) %>% na.omit()
+
+```
+
+```{r}
+# create CI for groups comparing 
+
+t.test(defender, forward)$conf.int
+mean(defender) - mean(forward)
+
+t.test(defender, goalkeeper)$conf.int
+mean(defender) - mean(goalkeeper)
+
+t.test(defender, middle)$conf.int
+mean(defender) - mean(middle)
+
+t.test(goalkeeper, forward)$conf.int
+mean(goalkeeper) - mean(forward)
+
+t.test(forward, middle)$conf.int
+mean(forward) - mean(middle)
+
+t.test(middle, goalkeeper)$conf.int
+mean(middle) - mean(goalkeeper)
+
+# I know, here I must apply a useful function to simplfy this work, but I didn't...
+```
+Here we can see that forward and middle players have no statistically significant difference in their means estimates. 
+
+Let's perform p-value estimation of mean difference - 
+```{r}
+# pairwise t-test performing without p.adjust.method
+x <- data.frame(data=c(forward,defender,goalkeeper,middle),
+                key=c(
+                  rep("forward", length(forward)),
+                  rep("defender", length(defender)),
+                  rep("goalkeeper", length(goalkeeper)),
+                  rep("middle", length(middle))) )
+
+pairwise.t.test(x$data, x$key, pool.sd=FALSE)
+```
+
+
+```{r}
+# pairwise t-test performing with Holm p.adjust.method
+x <- data.frame(data=c(forward,defender,goalkeeper,middle),
+                key=c(
+                  rep("forward", length(forward)),
+                  rep("defender", length(defender)),
+                  rep("goalkeeper", length(goalkeeper)),
+                  rep("middle", length(middle))) )
+
+pairwise.t.test(x$data, x$key, pool.sd=FALSE, 
+                p.adjust.method = "holm")
+```
+```{r}
+# pairwise t-test performing with B.Hochberg p.adjust.method
+x <- data.frame(data=c(forward,defender,goalkeeper,middle),
+                key=c(
+                  rep("forward", length(forward)),
+                  rep("defender", length(defender)),
+                  rep("goalkeeper", length(goalkeeper)),
+                  rep("middle", length(middle))) )
+
+pairwise.t.test(x$data, x$key, pool.sd=FALSE, 
+                p.adjust.method = "hochberg")
+```
+It is looks like almost all groups except forward-midles have differing estimates of means - results we have got earlier with CIs. And I suppose there is no false estimates!
+
+```{r}
+
+```
+
