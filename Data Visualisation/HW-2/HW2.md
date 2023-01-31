@@ -1,0 +1,219 @@
+HW2
+================
+Andrey
+2022-11-07
+
+## 1
+
+``` r
+data <- read.csv('insurance_cost.csv')
+```
+
+## 2
+
+``` r
+#install.packages("plotly")
+#install.packages('skimr')
+library(plotly)
+library(skimr)
+
+plot_ly(
+  data[data$bmi != 0,],
+  x = ~ bmi,
+  y = ~ charges,
+  color = ~ smoker
+)
+```
+
+## 3
+
+``` r
+plot <- ggplot() +
+  geom_point(data = data, 
+               aes(x = bmi, y = charges, color = smoker), size=2) +
+  theme_minimal()
+ggplotly(plot)
+```
+
+## 4
+
+``` r
+library(corrplot)
+library(corrr)
+
+data_clean <- data %>% 
+  filter(age != 0 & bmi != 0 & charges != 0) %>% 
+  select(is.integer | is.numeric)
+head(data_clean)
+```
+
+``` r
+# Получаем непосредственно матрицу
+data_cor <- cor(data_clean)
+data_cor
+```
+
+``` r
+corrplot(data_cor, method = 'pie')
+```
+
+``` r
+corrplot(data_cor, method = 'color')
+```
+
+``` r
+rplot(data_cor)
+```
+
+``` r
+data_cor %>% 
+  network_plot(min_cor = .0)
+```
+
+## 5
+
+``` r
+#install.packages('fastDummies')
+library(fastDummies)
+
+data_numeric <- dummy_columns(data, select_columns = c('sex', 'smoker', 'region'), remove_first_dummy = TRUE) %>% select(where(is.numeric))
+data_numeric
+```
+
+## 6
+
+``` r
+data_clear_scaled <- scale(data_numeric)
+head(data_clear_scaled)
+
+library(factoextra)
+
+data_clear_dist <- dist(data_clear_scaled, method = "euclidean")
+as.matrix(data_clear_dist)[1:6,1:6]
+```
+
+``` r
+data_clear_hc <- hclust(d = data_clear_dist, 
+                        method = "ward.D2")
+# Compute cophentic distance
+res.coph <- cophenetic(data_clear_hc)
+# Correlation between cophenetic distance and
+# the original distance
+cor(data_clear_dist, res.coph)
+
+data_clear_hc_av <- hclust(d = data_clear_dist, 
+                        method = "average")
+res.coph_av <- cophenetic(data_clear_hc_av)
+cor(data_clear_dist, res.coph_av)
+```
+
+``` r
+library(factoextra)
+fviz_dend(data_clear_hc, 
+          cex = 0.1) # cex() - размер лейблов
+```
+
+## 7
+
+``` r
+#install.packages('RColorBrewer')
+library(RColorBrewer)
+
+fviz_dend(data_clear_hc, cex = 0.5, k = 4,
+k_colors = "jco", type = "circular")
+```
+
+``` r
+require("igraph")
+fviz_dend(data_clear_hc, k = 8, k_colors = "jco",
+  type = "phylogenic", repel = TRUE)
+```
+
+``` r
+require("igraph")
+fviz_dend(data_clear_hc, k = 4, # Cut in four groups
+  k_colors = "jco",
+  type = "phylogenic", repel = TRUE,
+  phylo_layout = "layout.gem")
+```
+
+## 8
+
+``` r
+library(pheatmap)
+pheatmap(data_clear_scaled)
+```
+
+## 9
+
+``` r
+head(data_numeric)
+library(FactoMineR)
+#install.packages('ggbiplot')
+library(devtools)
+#install_github("vqv/ggbiplot")
+library(ggbiplot)
+library(plyr)
+```
+
+``` r
+data_full.pca <- prcomp(data_clean, 
+                        scale = T)
+summary(data_full.pca)
+```
+
+Здесь видим, что первые две компоненты объясняют более 60% дисперсии
+данных - это не идеально, но вполне нормально.
+
+``` r
+fviz_eig(data_full.pca, 
+         addlabels = T, 
+         ylim = c(0, 40))
+```
+
+Выше представлен график распределения объясненной дисперсии по
+компонентам. Для анализа берем первые две.
+
+``` r
+fviz_pca_var(data_full.pca, col.var = "contrib")
+```
+
+Данный график показывает векторное отношение переменных наших данных в
+координатах главных двух компонент. Здесь видим положительную корреляцию
+по первой компоненте переменных возраста, индекса массы тела и затрат
+страховой, а по второй компоненте - положительную корреляцию с
+количеством детей. На графике ниже представлены основные три переменные,
+которые наилучшим образом объясняют дисперсию наших данных. Видим, что
+наиболее скоррелированны возраст и затраты страховой.
+
+``` r
+fviz_pca_var(data_full.pca, 
+             select.var = list(contrib = 3), # Задаём число компонент здесь 
+             col.var = "contrib")
+```
+
+Далее оцениваем переменные, вносящие наибольший вклад в первые три
+главные компоненты. Видим, что первая компанента состоит в основном из
+затрат страховой, возраста и ИМТ - что и было понятно, на прошлых
+графиках.
+
+``` r
+fviz_contrib(data_full.pca, choice = "var", axes = 1, top = 24) # 1
+fviz_contrib(data_full.pca, choice = "var", axes = 2, top = 24) # 2
+fviz_contrib(data_full.pca, choice = "var", axes = 3, top = 24) # 3
+```
+
+Ниже представлен график, на котором представлены все наблюдения и
+основные переменные, отвечающие за дисперсию данных.
+
+``` r
+library(ggbiplot)
+ggbiplot(data_full.pca, 
+         scale=0, alpha = 0.1) + 
+  theme_minimal()
+```
+
+Таким образом, наибольшая корреляция с затратами страховой наблюдается у
+возраста, ИМТ и, в некоторой степени, у переменной, отвечающей за
+количество детей. Эти переменные объясняют около 60% дисперсии данных,
+однако четко выраженных кластеров и групп мы не наблюдаем.
